@@ -1,0 +1,54 @@
+---
+    - hosts: localhost
+      connection: local
+      vars_files:
+        - ../variables_staging.yml
+
+      vars:
+        tenant_id: "{{ tenant_id }}"
+        client_id: "{{ client_id }}"
+        client_secret: "{{ client_secret }}"
+        aks_name: "{{ aks_name }}"
+        subscription_id: "{{ subscription_id }}"
+
+      tasks:
+      - name: Az Login with SP
+        shell: az login --service-principal -u "{{ client_id }}" -p "{{ client_secret }}" --tenant "{{ tenant_id }}"
+
+      - name: Az Set Account
+        shell: az account set --subscription "{{ subscription_id }}"
+
+      - name: Connecting to AKS
+        shell: az aks get-credentials --resource-group "{{ resource_group }}" --name "{{ aks_name }}" --overwrite-existing
+ 
+      - pause: seconds=10
+
+      - name: Add Helm Repo to pull the Container Images
+        shell: helm repo add my-repo https://charts.bitnami.com/bitnami
+
+      - name: Add Helm Repo to pull the Container Images
+        shell: helm install my-release my-repo/mediawiki
+
+      - pause: seconds=20
+
+      - name: Add ENV Variables 1
+        shell: export APP_HOST=$(kubectl get svc --namespace default my-release-mediawiki --template "{{ range (index .status.loadBalancer.ingress 0) }}{{ . }}{{ end }}")
+
+      - name: Add ENV Variables 2
+        shell: export APP_PASSWORD=$(kubectl get secret --namespace default my-release-mediawiki -o jsonpath="{.data.mediawiki-password}" | base64 -d)
+
+      - name: Add ENV Variables 3
+        shell: export MARIADB_ROOT_PASSWORD=$(kubectl get secret --namespace default my-release-mariadb -o jsonpath="{.data.mariadb-root-password}" | base64 -d)
+
+      - name: Add ENV Variables 4
+        shell: export MARIADB_PASSWORD=$(kubectl get secret --namespace default my-release-mariadb -o jsonpath="{.data.mariadb-password}" | base64 -d)
+
+      - name: Rollout Mediawiki with updated creds
+        shell: helm upgrade --namespace default my-release oci://registry-1.docker.io/bitnamicharts/mediawiki --set mediawikiHost=$APP_HOST,mediawikiPassword=$APP_PASSWORD,mariadb.auth.rootPassword=$MARIADB_ROOT_PASSWORD,mariadb.auth.password=$MARIADB_PASSWORD
+
+      - name: View MediaWiki Password
+        shell: $(kubectl get secret --namespace default my-release-mediawiki -o jsonpath="{.data.mediawiki-password}" | base64 -d)
+
+      - name: View MediaWiki Public Ip to access
+        shell: kubectl get svc --namespace default -w my-release-mediawiki
+

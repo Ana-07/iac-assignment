@@ -1,0 +1,28 @@
+  - name: "Trigger Multiple Ansible Playbooks"
+    hosts: localhost
+    become: yes
+    vars_files:
+      - variables_staging.yml
+
+    vars:
+      username: azureuser
+      aks_playbook_path: "{{ aks_playbook_path }}"
+      
+    remote_user: "{{ username }}"
+    tasks:
+      - name: Run AKS for deployments
+        become: yes
+        become_user: azureuser
+        register: aks_output
+        retries: 3
+        delay: 10
+        until: aks_output.rc == 0
+        shell:
+          cmd: ansible-playbook  "{{ aks_playbook_path }}"
+      - debug:
+            var: aks_output.stdout_lines
+
+      - pause: seconds=15
+
+
+

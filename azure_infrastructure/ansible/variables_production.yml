@@ -1,0 +1,7 @@
+tenant_id: 12345678-abcd-1234-ef12-123456789abc
+client_id: abcde123-4567-890f-12ab-34cd56789ef0
+client_secret: mysecretclientsecret123"
+subscription_id: abcdefgh-1234-5678-90ab-cdef12345678
+resource_group: media-wiki-prod-eu-rg01
+aks_name: media-wiki-prod-eu-aks-01
+aks_playbook_path: /home/azureuser/azure_infrastructure/ansible/aks/up.yml
